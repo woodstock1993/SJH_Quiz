@@ -1,1 +1,17 @@
+# 캐시 및 설정 파일
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
 .env
+*.env
+
+# Alembic 관련 파
+alembic.ini
+
+# IDE 관련 파일
+.vscode/
+.idea/
+
