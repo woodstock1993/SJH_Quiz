@@ -4,7 +4,7 @@ from datetime import datetime
 
 class UserBase(BaseModel):
     email: Optional[EmailStr] = None
-    username: Optional[str] = None
+    name: Optional[str] = None
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
 
@@ -18,7 +18,7 @@ class UserRead(UserBase):
 
 class UserCreate(UserBase):
     email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50)
+    name: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=8)
 
 class UserUpdate(UserBase):
