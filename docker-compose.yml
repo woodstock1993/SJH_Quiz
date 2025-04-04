@@ -1,0 +1,45 @@
+services:
+  fastapi:
+    build: .
+    container_name: fastapi_server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env   
+    depends_on:
+      - db        
+      - redis
+    volumes:
+      - .:/app
+    networks:
+      - backend
+    command: poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    env_file:
+      - .env 
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+  db:
+    image: postgres:alpine
+    container_name: db
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    networks:
+      - backend      
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+networks:
+  backend:
+
+volumes:
+  postgres_data:
