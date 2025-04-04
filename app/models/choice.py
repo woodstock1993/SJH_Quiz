@@ -13,7 +13,8 @@ class Choice(Base):
     order = Column(Integer, nullable=False)
 
     question = relationship("Question", back_populates="choices")
-
+    answers = relationship("UserQuizAttemptAnswer", back_populates="choice")
+    
 @event.listens_for(Choice, "before_insert")
 def set_choice_order(mapper, connection, target):
     session = Session.object_session(target)

@@ -13,6 +13,7 @@ class Question(Base):
 
     quiz = relationship("Quiz", back_populates="questions")
     choices = relationship("Choice", back_populates="question")
+    answers = relationship("UserQuizAttemptAnswer", back_populates="question")
 
 @event.listens_for(Question, "before_insert")
 def set_question_order(mapper, connection, target):

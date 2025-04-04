@@ -8,9 +8,10 @@ class Quiz(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)    
+    description = Column(Text, nullable=True)
+    question_count = Column(Integer, nullable=True, default=None)
 
     user = relationship("User", back_populates="quizzes")
     questions = relationship("Question", back_populates="quiz")
-    attempts = relationship("UserQuizAttempt", back_populates="quiz")
     registrations = relationship("UserQuizRegistration", back_populates="quiz")
+    attempts = relationship("UserQuizAttempt", back_populates="quiz")
