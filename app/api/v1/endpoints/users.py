@@ -5,6 +5,7 @@ from typing import List
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.crud import user as user_crud
+from app.crud import quiz as quiz_crud
 from app.core.security import get_admin_user, get_current_user
 
 router = APIRouter()
@@ -99,6 +100,15 @@ def get_user(
             detail="사용자를 찾을 수 없습니다."
         )
     return user
+
+@router.get("/{user_id}/quizzes/", response_model=list)
+def get_user_quiz_statuses(
+    user_id: int,     
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    return quiz_crud.read_user_quiz_statuses(db, user_id)
+
 
 @router.put("/{user_id}", response_model=UserRead)
 def update_user(    

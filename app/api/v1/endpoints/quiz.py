@@ -4,10 +4,9 @@ from typing import Any, Dict, List, Optional
 
 from app.db.session import get_db
 from app.schemas.choice import ChoiceResponse
-from app.schemas.quiz import QuizCreate, QuizUpdate, QuizResponse
+from app.schemas.quiz import *
 from app.schemas.question import QuestionResponse
-from app.crud.choice import get_choices_by_question, update_choice, delete_choice
-from app.crud.quiz import create_quiz, read_quizzes, read_quiz, update_quiz, delete_quiz, read_questions_with_choices_by_quiz
+from app.crud import quiz as crud_quiz
 from app.core.security import get_current_user, get_admin_user
 from app.models.user import User
 from app.models.question import Question
@@ -35,7 +34,30 @@ def create_quiz_api(
     인증 필요:
     - 관리자 계정만 접근 가능
     """
-    return create_quiz(db, quiz, user_id=current_user.id)
+    return crud_quiz.create_quiz(db, quiz, user_id=current_user.id)
+
+@router.post("/quizzes/{quiz_id}/register", response_model=QuizRegistrationCreate)
+def register_quiz(
+    quiz_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """사용자가 특정 퀴즈에 응시 등록하는 API"""
+    registration = crud_quiz.register_user_for_quiz(db, user_id=current_user.id, quiz_id=quiz_id)
+    if not registration:
+        raise HTTPException(status_code=400, detail="Quiz registration failed")
+    return registration
+
+@router.post("/quizzes/{quiz_id}/attempt", response_model=QuizAttemptCreate)
+def attempt_quiz(
+    quiz_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):    
+    attempt = crud_quiz.create_user_quiz_attempt(db, user_id=current_user.id, quiz_id=quiz_id)
+    if not attempt:
+        raise HTTPException(status_code=400, detail="Quiz attempt creation failed")
+    return attempt
 
 @router.get("/", response_model=Dict[str, Any])
 def get_quizzes(
@@ -65,7 +87,7 @@ def get_quizzes(
     인증 필요:
     - 관리자 또는 사용자 계정만 접근 가능
     """
-    return read_quizzes(db, page=page, page_size=page_size, current_user=current_user)
+    return crud_quiz.read_quizzes(db, page=page, page_size=page_size, current_user=current_user)
 
 
 @router.get("/{quiz_id}", response_model=QuizResponse)
@@ -89,7 +111,7 @@ def get_quiz(quiz_id: int, db: Session = Depends(get_db), current_user: User = D
     - 인증 필요:
         - 관리자 또는 사용자 계정만 접근 가능
     """
-    quiz = get_quiz(db, quiz_id)
+    quiz = crud_quiz.read_quiz(db, quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return quiz
@@ -167,6 +189,42 @@ def get_choices_questions_by_quiz(
         ]
     }
 
+@router.get("/{quiz_id}/random-questions")
+def get_random_quiz_questions(
+        quiz_id: int, 
+        num: int = Query(None, description="Number of questions to retrieve"),
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_admin_user),
+    ):
+    result = crud_quiz.read_random_questions(db, quiz_id, num)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return result
+
+@router.get("/{quiz_id}/start")
+def get_start_quiz(
+        quiz_id: int,
+        user_quiz_attempt_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),        
+):
+    result = crud_quiz.read_random_questions(db, quiz_id, user_quiz_attempt_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return result
+
+@router.get("/refresh/{user_quiz_attempt_id}")
+def get_refresh_quiz(
+        quiz_id: int,
+        user_quiz_attempt_id: int,
+        db: Session = Depends(get_db),
+        # current_user: User = Depends(get_current_user),
+):
+    result = crud_quiz.read_quiz_attempt_cache(quiz_id, user_quiz_attempt_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="UserQuizAttempt not found")
+    return result
+
 @router.put("/{quiz_id}", response_model=QuizResponse)
 def update_quiz_api(quiz_id: int, quiz_update: QuizUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)):
     """
@@ -192,10 +250,35 @@ def update_quiz_api(quiz_id: int, quiz_update: QuizUpdate, db: Session = Depends
     예외 처리:
     - 404: 해당 quiz_id의 퀴즈가 존재하지 않는 경우
     """    
-    quiz = update_quiz(db, quiz_id, quiz_update)
+    quiz = crud_quiz.update_quiz(db, quiz_id, quiz_update)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return quiz
+
+@router.patch("/{quiz_id}/answer", response_model=QuizAnswerResponse)
+def update_quiz_answer(
+    quiz_id: int,
+    user_quiz_attempt_id: int,
+    request: QuizAnswerRequest,    
+    current_user: User = Depends(get_current_user),
+):
+    result = crud_quiz.update_quiz_answer(quiz_id, user_quiz_attempt_id, request)
+    if not result:
+        raise HTTPException(status_code=400, detail="Failed to update answer")    
+    return result
+    
+@router.post("/{quiz_id}/submit", response_model=None)
+def post_submit_quiz(
+        quiz_id: int,
+        user_quiz_attempt_id: int,
+        data: QuizSubmissionRequest,
+        db: Session = Depends(get_db),
+        # current_user: User = Depends(get_current_user),
+):
+    result = crud_quiz.submit_quiz(db, quiz_id, user_quiz_attempt_id, data)
+    if result is None:
+        raise HTTPException(status_code=400, detail="Quiz submition failed")        
+    return result
 
 @router.delete("/{quiz_id}", response_model=QuizResponse)
 def delete_quiz_api(quiz_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)):
@@ -219,7 +302,7 @@ def delete_quiz_api(quiz_id: int, db: Session = Depends(get_db), current_user: U
     예외 처리:
     - 404: 해당 quiz_id의 퀴즈가 존재하지 않는 경우
     """    
-    quiz = delete_quiz(db, quiz_id)
+    quiz = crud_quiz.delete_quiz(db, quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return quiz
