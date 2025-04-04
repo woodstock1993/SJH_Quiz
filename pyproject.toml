@@ -26,6 +26,7 @@ dependencies = [
     "bcrypt (<4.1)",
     "passlib (>=1.7.4,<2.0.0)",
     "pytz (>=2025.2,<2026.0)",
+    "redis (>=5.2.1,<6.0.0)",
 ]
 
 [build-system]
