@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
 from app.api.v1.router import router
-from app.db.session import Base
-from app.db.session import engine
+from app.core.config import redis_client
 
 app = FastAPI(
     title="SJH_Quiz",
@@ -29,5 +28,29 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+@app.get("/cache")
+def get_cache(key: str):
+    value = redis_client.get(key)
+    if value is None:
+        return {"error": "Key not found"}
+    return {"key": key, "value": value}
+
+@app.post("/cache")
+def set_cache(key: str, value: str):
+    redis_client.set(key, value)
+    return {"message": f"Key '{key}' has been set!"}
+
+@app.put("/cache")
+def update_cache(key: str, value: str):
+    redis_client.set(key, value)
+    return {"message": f"Key '{key}' has been updated"}
+
+@app.delete("/cache")
+def delete_cache(key: str):
+    deleted_count = redis_client.delete(key)
+    if deleted_count == 0:
+        return {"error": "Key not found"}
+    return {"message": f"Key '{key}' has been deleted"}
 
 app.include_router(router, prefix="/api/v1")
