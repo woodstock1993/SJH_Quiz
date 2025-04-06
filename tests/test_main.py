@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
-from app.core.config import redis_client
+from app.utils.utils import redis_client
 from app.db.session import Base, get_db
 from app.api.v1.router import router
 

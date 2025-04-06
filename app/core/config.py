@@ -1,18 +1,14 @@
+# app/core/config.py
+
 from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
-
-load_dotenv()
-
-import redis
-
-redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
-
 
 class Settings(BaseSettings):
     BASE_URL: str
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+
+    REDIS_HOST: str
+    REDIS_PORT: int
     REDIS_URL: str
+
     DATABASE_URL: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -26,8 +22,3 @@ class Settings(BaseSettings):
         extra = "allow"
 
 settings = Settings()
-
-settings = Settings(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-)

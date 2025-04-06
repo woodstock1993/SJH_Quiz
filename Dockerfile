@@ -8,13 +8,13 @@ ENV PATH="/root/.local/bin:$PATH"
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock .env alembic.ini /app/
+COPY pyproject.toml poetry.lock .env alembic.ini /app
 
 RUN poetry install --no-interaction --no-ansi
 
 RUN poetry add --group dev pytest
 
-COPY . /app
+COPY . /
 
 EXPOSE 8000
 

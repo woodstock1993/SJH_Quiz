@@ -8,7 +8,7 @@ from fastapi import HTTPException, Query
 from sqlalchemy.orm import joinedload, Session
 
 from app.utils.utils import transform_to_quiz_submit
-from app.core.config import redis_client, settings
+from app.utils.utils import redis_client, settings
 from app.models.user import User
 from app.models.quiz import Quiz
 from app.models.choice import Choice
