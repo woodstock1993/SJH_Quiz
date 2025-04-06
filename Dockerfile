@@ -12,6 +12,8 @@ COPY pyproject.toml poetry.lock .env alembic.ini /app/
 
 RUN poetry install --no-interaction --no-ansi
 
+RUN poetry add --group dev pytest
+
 COPY . /app
 
 EXPOSE 8000

@@ -20,9 +20,14 @@ docker compose up -d
 
 docker exec -it fastapi_server /bin/sh
 
-poetry run alembic upgrade head
+mkdir -p alembic/versions
 poetry run alembic revision --autogenerate -m "Initial migration"
+poetry run alembic upgrade head
 
+테스트 코드
+poetry run pytest tests/test_main.py
+
+Open API
 -> http://localhost:8000/docs
 ```
 
