@@ -204,11 +204,11 @@ def get_random_quiz_questions(
 @router.get("/{quiz_id}/start")
 def get_start_quiz(
         quiz_id: int,
-        user_quiz_attempt_id: int,
+        user_id: int,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),        
 ):
-    result = crud_quiz.read_random_questions(db, quiz_id, user_quiz_attempt_id)
+    result = crud_quiz.read_random_questions(db, user_id, quiz_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return result
@@ -218,7 +218,7 @@ def get_refresh_quiz(
         quiz_id: int,
         user_quiz_attempt_id: int,
         db: Session = Depends(get_db),
-        # current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user),
 ):
     result = crud_quiz.read_quiz_attempt_cache(quiz_id, user_quiz_attempt_id)
     if result is None:
@@ -273,36 +273,31 @@ def post_submit_quiz(
         user_quiz_attempt_id: int,
         data: QuizSubmissionRequest,
         db: Session = Depends(get_db),
-        # current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_user),
 ):
     result = crud_quiz.submit_quiz(db, quiz_id, user_quiz_attempt_id, data)
     if result is None:
         raise HTTPException(status_code=400, detail="Quiz submition failed")        
     return result
 
-@router.delete("/{quiz_id}", response_model=QuizResponse)
-def delete_quiz_api(quiz_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_admin_user)):
-    """
-    주의 퀴즈 삭제 API
+@router.post("/sample")
+def quiz_sample(
+    title: str,
+    description: str,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    result = crud_quiz.test_create_quiz_with_questions_and_choices(db, title=title, description=description, user_id=user_id)
+    return result
 
-    quiz_id에 해당하는 퀴즈와 관련된 모든 사항을(문제와 선택지) 삭제합니다.
-    관리자로 인증된 사용자만 삭제할 수 있습니다.
-
-    요청 경로 파라미터:
-    - quiz_id (int): 삭제할 퀴즈의 고유 ID
-
-    응답 데이터:
-    - id (int): 삭제된 퀴즈 ID
-    - title (str): 삭제된 퀴즈 제목
-    - description (str): 삭제된 퀴즈 설명    
-
-    인증 필요:
-    - 관리자 계정만 접근 가능
-
-    예외 처리:
-    - 404: 해당 quiz_id의 퀴즈가 존재하지 않는 경우
-    """    
-    quiz = crud_quiz.delete_quiz(db, quiz_id)
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    return quiz
+@router.get("/{quiz_id}/validate")
+def get_validate_quiz(
+        quiz_id: int,
+        db: Session = Depends(get_db),
+        # current_user: User = Depends(get_admin_user),        
+):
+    result = crud_quiz.validate_quiz(db, quiz_id=quiz_id)
+    if result is None:
+        raise HTTPException(status_code=400, detail="Quiz Validation failed")        
+    return result

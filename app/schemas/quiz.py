@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Any
 from typing import Optional
 
@@ -28,8 +28,7 @@ class QuestionWithChoicesResponse(BaseModel):
     quiz_id: int
     choices: List[ChoiceResponse]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuizRegistrationCreate(BaseModel):
     user_id: int
@@ -39,8 +38,7 @@ class QuizRegistrationResponse(QuizRegistrationCreate):
     id: int
     registered_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuizAttemptCreate(BaseModel):
     user_id: int
@@ -50,8 +48,7 @@ class QuizAttemptResponse(QuizAttemptCreate):
     id: int
     attempted_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuizAnswerRequest(BaseModel):
     quiz_attempt_id: int
@@ -94,3 +91,8 @@ class QuizSubmitRequest:
         self.title = title
         self.description = description
         self.questions = questions
+
+class TestQuizCreateRequest(BaseModel):
+    title: str
+    description: str | None = None
+    user_id: int

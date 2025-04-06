@@ -40,24 +40,12 @@ class UserQuizAttempt(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     quiz_id = Column(Integer, ForeignKey("quizzes.id"))
     attempted_at = Column(DateTime, server_default=func.now())
+    is_submit = Column(Boolean, nullable=False, default=False)
 
     quiz = relationship("Quiz", back_populates="attempts")
     user = relationship("User", back_populates="quiz_attempts")
     attempt_questions = relationship("UserQuizAttemptQuestion", back_populates="attempt")
     answers = relationship("UserQuizAttemptAnswer", back_populates="user_quiz_attempt")
-
-class UserQuizAttemptAnswer(Base):
-    __tablename__ = "user_quiz_attempt_answers"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_quiz_attempt_id = Column(Integer, ForeignKey("user_quiz_attempts.id"), nullable=False)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
-    choice_id = Column(Integer, ForeignKey("choices.id"), nullable=False)
-    
-    # 관계 설정
-    user_quiz_attempt = relationship("UserQuizAttempt", back_populates="answers")
-    question = relationship("Question", back_populates="answers")
-    choice = relationship("Choice", back_populates="answers")
 
 class UserQuizAttemptQuestion(Base):
     __tablename__ = "user_quiz_attempt_questions"
@@ -71,3 +59,24 @@ class UserQuizAttemptQuestion(Base):
 
     __table_args__ = (UniqueConstraint('attempt_id', 'question_id', name='uq_attempt_question'),)
 
+class UserQuizAttemptAnswer(Base):
+    __tablename__ = "user_quiz_attempt_answers"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_quiz_attempt_id = Column(Integer, ForeignKey("user_quiz_attempts.id"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
+    choice_id = Column(Integer, ForeignKey("choices.id"), nullable=False)
+        
+    user_quiz_attempt = relationship("UserQuizAttempt", back_populates="answers")
+    question = relationship("Question", back_populates="answers")
+    choice = relationship("Choice", back_populates="answers")
+
+class UserQuizScore(Base):
+    __tablename__ = "user_quiz_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_quiz_attempt_id = Column(Integer, ForeignKey("user_quiz_attempts.id"), unique=True, nullable=False)
+    score = Column(Integer, nullable=False)
+    total = Column(Integer, nullable=False)
+
+    user_quiz_attempt = relationship("UserQuizAttempt", backref="score")

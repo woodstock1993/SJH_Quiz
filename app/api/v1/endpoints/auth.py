@@ -24,7 +24,8 @@ def create_access_token(data: dict, expires_delta: timedelta):
 
 @router.post("/token", response_model=TokenResponse)
 def login_for_access_token(
-    form_data: OAuth2EmailRequest = Depends(), db: Session = Depends(get_db)
+    login_data: OAuth2EmailRequest,
+    db: Session = Depends(get_db)
 ):
     """
     사용자 인증 후 JWT 액세스 토큰을 발급하는 API
@@ -40,8 +41,8 @@ def login_for_access_token(
     예외 처리:
     - 잘못된 이메일 또는 비밀번호 입력 시 400 상태 코드와 함께 "Invalid email or password" 오류를 반환
     """        
-    user = get_user_by_email(db, email=form_data.email)
-    if not user or not verify_password(form_data.password, user.password):
+    user = get_user_by_email(db, email=login_data.email)
+    if not user or not verify_password(login_data.password, user.password):
         raise HTTPException(status_code=400, detail="Invalid email or password")
     
     access_token = create_access_token(

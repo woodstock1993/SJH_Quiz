@@ -1,4 +1,5 @@
 from datetime import datetime
+import httpx
 import json
 import random
 from typing import Any, Dict, List, Optional
@@ -7,11 +8,11 @@ from fastapi import HTTPException, Query
 from sqlalchemy.orm import joinedload, Session
 
 from app.utils.utils import transform_to_quiz_submit
-from app.core.config import redis_client
+from app.core.config import redis_client, settings
 from app.models.user import User
 from app.models.quiz import Quiz
 from app.models.choice import Choice
-from app.models.user import UserQuizAttempt, UserQuizAttemptAnswer, UserQuizRegistration
+from app.models.user import UserQuizAttempt, UserQuizAttemptQuestion, UserQuizAttemptAnswer, UserQuizRegistration, UserQuizScore
 from app.models.question import Question
 from app.schemas.quiz import *
 
@@ -150,7 +151,7 @@ def read_quiz(db: Session, quiz_id: int):
 def read_questions_with_choices_by_quiz(db: Session, quiz_id: int):
     return db.query(Question).filter(Question.quiz_id == quiz_id).options(joinedload(Question.choices)).all()
 
-def read_random_questions(db: Session, quiz_id: int, user_quiz_attempt_id: int, num_questions: int = None):
+def read_random_questions(db: Session, user_id: int, quiz_id: int, num_questions: int = None):
     """
     사용자가 시험 시작할 때 문제 순서와 답안 순서를 Redis에 반영하는 함수 (퀴즈 정보 포함)
     """
@@ -158,7 +159,16 @@ def read_random_questions(db: Session, quiz_id: int, user_quiz_attempt_id: int, 
     if not quiz:
         return None
 
-    redis_key = f"quiz:{quiz_id}:user_quiz_attempts:{user_quiz_attempt_id}"
+    user_quiz_attempt = UserQuizAttempt(
+        user_id=user_id,
+        quiz_id=quiz_id,
+        is_submit=False
+    )
+    db.add(user_quiz_attempt)
+    db.commit()
+    db.refresh(user_quiz_attempt)
+
+    redis_key = f"quiz:{quiz_id}:user_quiz_attempts:{user_quiz_attempt.id}"
     cached_data = redis_client.get(redis_key)
     
     if cached_data:
@@ -173,7 +183,8 @@ def read_random_questions(db: Session, quiz_id: int, user_quiz_attempt_id: int, 
         num_questions = total_questions
     
     questions = db.query(Question).filter(Question.quiz_id == quiz_id).all()
-    selected_questions = random.sample(questions, num_questions)
+    # selected_questions = random.sample(questions, num_questions)
+    selected_questions = questions
     
     result = {
         "quiz_id": quiz.id,
@@ -184,12 +195,13 @@ def read_random_questions(db: Session, quiz_id: int, user_quiz_attempt_id: int, 
 
     for question in selected_questions:
         choices = db.query(Choice).filter(Choice.question_id == question.id).all()
-        random.shuffle(choices)
+        # random.shuffle(choices)
         result["questions"].append({
             "id": question.id,
             "text": question.text,
             "choices": [{"id": choice.id, "text": choice.text} for choice in choices]
         })
+    
     
     redis_client.setex(redis_key, 3600, json.dumps(result))  # 퀴즈 정보까지 Redis에 저장
 
@@ -259,17 +271,24 @@ def read_quiz_attempt_cache(quiz_id: int, user_quiz_attempt_id: int):
     
     return quiz_data
 
-def submit_quiz(db: Session, quiz_id: int, user_quiz_attempt_id: int, data: QuizSubmitRequest):
-   # 퀴즈 찾기
+def submit_quiz(db: Session, quiz_id: int, user_quiz_attempt_id: int, data: QuizSubmitRequest):   
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
         raise ValueError("퀴즈를 찾을 수 없습니다.")
     
     # 데이터 변환
     quiz_data = transform_to_quiz_submit(data)
+
+    correct_count = 0
+    total_count = len(quiz_data.questions)
     
     # 각 질문의 선택된 답안 저장
     for question in quiz_data.questions:
+        user_quiz = UserQuizAttemptQuestion(
+            attempt_id=user_quiz_attempt_id,
+            question_id=question['id'],
+        )
+        db.add(user_quiz)
         for choice in question['choices']:
             print(choice)
             user_answer = UserQuizAttemptAnswer(
@@ -278,31 +297,71 @@ def submit_quiz(db: Session, quiz_id: int, user_quiz_attempt_id: int, data: Quiz
                 choice_id=choice['id']
             )
             db.add(user_answer)
-    
+
+            choice_obj = db.query(Choice).filter(Choice.id == choice['id']).first()            
+            if choice_obj and choice_obj.is_correct and choice['is_selected']:
+                correct_count += 1
+
+    attempt = db.query(UserQuizAttempt).filter(UserQuizAttempt.id == user_quiz_attempt_id).first()
+    if not attempt:
+        raise ValueError("퀴즈 응시 정보를 찾을 수 없습니다.")
+    attempt.is_submit = True
+
+    user_score = UserQuizScore(
+        user_quiz_attempt_id=user_quiz_attempt_id,
+        score=correct_count,
+        total=total_count
+    )
+    db.add(user_score)
+    db.commit()    
+
+    return {
+        "message": "퀴즈 제출 완료", 
+        "score": correct_count,
+        "total": total_count     
+        }
+
+def test_create_quiz_with_questions_and_choices(db: Session, title: str, description: str, user_id: int):
+    quiz = Quiz(title=title, description=description, user_id=user_id)
+    db.add(quiz)
+    db.flush()
+
+    for i in range(1, 101):
+        question = Question(
+            quiz_id=quiz.id,
+            text=f"문제 {i}",
+        )
+        db.add(question)
+        db.flush()
+
+        for j in range(1, 6):  # 선택지 5개 생성
+            choice = Choice(
+                question_id=question.id,
+                text=f"{i}번 문제 선택지 {j}",
+                is_correct=(j == 1)  # 첫 번째 선택지만 정답
+            )
+            db.add(choice)
+
     db.commit()
-    
-    return {"message": "퀴즈 제출 완료", "user_quiz_attempt_id": user_quiz_attempt_id}
+    db.refresh(quiz)
+    return quiz
 
+def validate_quiz(db: Session, quiz_id: int) -> dict:
+    quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if not quiz:
+        return {"valid": False, "reason": "퀴즈가 존재하지 않습니다."}
 
-def delete_quiz(db: Session, quiz_id: int):
-    try:
-        db_quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
+    if not quiz.questions or len(quiz.questions) == 0:
+        return {"valid": False, "reason": "퀴즈에 문제가 없습니다."}
+
+    for question in quiz.questions:
+        choices = question.choices
         
-        if not db_quiz:
-            return None
+        if len(choices) < 2:
+            return {"valid": False, "reason": f"문제 ID {question.id}에 선택지가 2개 미만입니다."}
 
-        questions = db.query(Question).filter(Question.quiz_id == quiz_id).all()
+        correct_choices = [c for c in choices if c.is_correct]
+        if len(correct_choices) == 0:
+            return {"valid": False, "reason": f"문제 ID {question.id}에 정답이 없습니다."}
         
-        for question in questions:
-            db.query(Choice).filter(Choice.question_id == question.id).delete()
-
-        db.query(Question).filter(Question.quiz_id == quiz_id).delete()
-
-        db.delete(db_quiz)
-        
-        db.commit()
-        return db_quiz
-
-    except Exception as e:
-        db.rollback()
-        raise e
+    return {"valid": True, "reason": "퀴즈가 올바르게 구성되었습니다."}

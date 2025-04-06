@@ -9,6 +9,7 @@ redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=T
 
 
 class Settings(BaseSettings):
+    BASE_URL: str
     REDIS_URL: str
     DATABASE_URL: str
     POSTGRES_USER: str
