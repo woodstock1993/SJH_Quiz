@@ -21,6 +21,7 @@ docker compose up -d
 docker exec -it fastapi_server /bin/sh
 
 mkdir -p alembic/versions
+
 poetry run alembic revision --autogenerate -m "Initial migration"
 poetry run alembic upgrade head
 
