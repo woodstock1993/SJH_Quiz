@@ -32,13 +32,6 @@ Open API
 -> http://localhost:8000/docs
 ```
 
-## 제거 방법
-```
-docker compose down -v
-
-docker system prune -af 
-```
-
 ## 기술  
 ```
 Python

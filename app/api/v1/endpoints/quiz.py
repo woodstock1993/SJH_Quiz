@@ -42,7 +42,15 @@ def register_quiz(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    """사용자가 특정 퀴즈에 응시 등록하는 API"""
+    """
+    사용자 특정 퀴즈 등록 API
+
+    요청 본문:
+    - quiz_id (int): 퀴즈 ID
+    
+    인증 필요:
+    - 사용자 계정 접근 가능
+    """
     registration = crud_quiz.register_user_for_quiz(db, user_id=current_user.id, quiz_id=quiz_id)
     if not registration:
         raise HTTPException(status_code=400, detail="Quiz registration failed")
@@ -53,7 +61,17 @@ def attempt_quiz(
     quiz_id: int, 
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
-):    
+):
+    """
+    사용자 특정 퀴즈 응시 API
+
+    요청 본문:
+    - user_id (int): 사용자 ID
+    - quiz_id (int): 퀴즈 ID
+    
+    인증 필요:
+    - 사용자 계정 접근 가능
+    """    
     attempt = crud_quiz.create_user_quiz_attempt(db, user_id=current_user.id, quiz_id=quiz_id)
     if not attempt:
         raise HTTPException(status_code=400, detail="Quiz attempt creation failed")
@@ -196,6 +214,16 @@ def get_random_quiz_questions(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_admin_user),
     ):
+    """
+    사용자 퀴즈별 무작위 문제 및 선택지 조회 API
+
+    요청 본문:
+    - quiz_id (int): 퀴즈 ID
+    - num (int): 생성 문제 수
+    
+    인증 필요:
+    - 관리자 계정 접근 가능
+    """    
     result = crud_quiz.read_random_questions(db, quiz_id, num)
     if result is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -208,6 +236,16 @@ def get_start_quiz(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),        
 ):
+    """
+    사용자 퀴즈 시작 API
+
+    요청 본문:
+    - user_id (int): 사용자 ID
+    - quiz_id (int): 퀴즈 ID    
+    
+    인증 필요:
+    - 사용자 계정 접근 가능
+    """        
     result = crud_quiz.read_random_questions(db, user_id, quiz_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
@@ -220,6 +258,16 @@ def get_refresh_quiz(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
+    """
+    사용자 퀴즈별 정보(문제, 선택지, 답안지) 조회 API
+
+    요청 본문:
+    - quiz_id (int): 퀴즈 ID    
+    - user_id (int): 사용자 ID
+    
+    인증 필요:
+    - 사용자 계정 접근 가능
+    """            
     result = crud_quiz.read_quiz_attempt_cache(quiz_id, user_quiz_attempt_id)
     if result is None:
         raise HTTPException(status_code=404, detail="UserQuizAttempt not found")
@@ -262,6 +310,16 @@ def update_quiz_answer(
     request: QuizAnswerRequest,    
     current_user: User = Depends(get_current_user),
 ):
+    """
+    사용자 선택지 업데이트 API
+
+    요청 본문:
+    - quiz_id (int): 퀴즈 ID    
+    - user_quiz_attempt_id (int): 사용자 퀴즈 응시 ID
+    
+    인증 필요:
+    - 사용자 계정 접근 가능
+    """     
     result = crud_quiz.update_quiz_answer(quiz_id, user_quiz_attempt_id, request)
     if not result:
         raise HTTPException(status_code=400, detail="Failed to update answer")    
@@ -275,6 +333,16 @@ def post_submit_quiz(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
+    """
+    사용자 시험 제출 API
+
+    요청 본문:
+    - quiz_id (int): 퀴즈 ID    
+    - user_quiz_attempt_id (int): 사용자 퀴즈 응시 ID
+    
+    인증 필요:
+    - 사용자 계정 접근 가능
+    """         
     result = crud_quiz.submit_quiz(db, quiz_id, user_quiz_attempt_id, data)
     if result is None:
         raise HTTPException(status_code=400, detail="Quiz submition failed")        
@@ -288,6 +356,17 @@ def quiz_sample(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user)
 ):
+    """
+    샘플 퀴즈 생성 API
+
+    요청 본문:
+    - title: 문제 제목
+    - description: 문제 설명
+    - user_id (int): 사용자 ID     
+    
+    인증 필요:
+    - 관리자 계정 접근 가능
+    """         
     result = crud_quiz.test_create_quiz_with_questions_and_choices(db, title=title, description=description, user_id=user_id)
     return result
 
@@ -295,8 +374,17 @@ def quiz_sample(
 def get_validate_quiz(
         quiz_id: int,
         db: Session = Depends(get_db),
-        # current_user: User = Depends(get_admin_user),        
+        current_user: User = Depends(get_admin_user),
 ):
+    """
+    퀴즈 검증 API
+
+    요청 본문:
+    - quiz_id (int): 퀴즈 ID
+    
+    인증 필요:
+    - 관리자 계정 접근 가능
+    """     
     result = crud_quiz.validate_quiz(db, quiz_id=quiz_id)
     if result is None:
         raise HTTPException(status_code=400, detail="Quiz Validation failed")        

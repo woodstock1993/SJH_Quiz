@@ -136,37 +136,3 @@ def update_question(
     db.commit()
     db.refresh(question)
     return {"message": "Question updated successfully"}
-
-@router.delete("/{question_id}", response_model=dict)
-def delete_question(
-        question_id: int, 
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_admin_user)
-    ):
-    """
-    특정 문제 및 문제와 관련된 선택지를 삭제하는 API
-
-    - 요청 경로 파라미터:
-    - question_id (int): 삭제할 문제 ID
-
-    반환값:
-    - dict: 삭제 성공 메시지.
-    -  {
-        "message": "Question and related choices deleted successfully"
-      }
-
-    예외:
-    - HTTP 404: 해당 ID의 문제가 존재하지 않을 경우
-
-    - 인증 필요:
-        - 관리자 또는 사용자 계정만 접근 가능
-    """    
-    question = db.query(Question).filter(Question.id == question_id).first()
-    if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
-    
-    db.query(Choice).filter(Choice.question_id == question_id).delete()
-    
-    db.delete(question)
-    db.commit()
-    return {"message": "Question and related choices deleted successfully"}
