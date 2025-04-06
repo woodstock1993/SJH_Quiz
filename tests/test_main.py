@@ -162,7 +162,7 @@ def test_start_quiz():
     assert len(all_answers) == 100
 
     ##############################################################
-    # 8 새로고침 시 유저 별 퀴즈 정보와 유저가 선택한 답안을 불러오는 API 테스트 #
+    # 7 새로고침 시 유저 별 퀴즈 정보와 유저가 선택한 답안을 불러오는 API 테스트 #
     ##############################################################
     refresh_resp = client.get(
         f"/api/v1/quiz/refresh/{user_quiz_attempt_id}",
@@ -177,7 +177,7 @@ def test_start_quiz():
         assert selected, f"문제 {question['id']}에 선택된 답안이 없음"
 
     ######################
-    # 9 퀴즈 제출 API 테스트 #
+    # 8 퀴즈 제출 API 테스트 #
     ######################
     submission_payload = {
         "user_id": 2,
