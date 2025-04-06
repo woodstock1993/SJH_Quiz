@@ -5,8 +5,6 @@ __pycache__/
 
 # Virtual environment
 .venv/
-.env
-*.env
 
 # Alembic 관련 파
 alembic.ini
